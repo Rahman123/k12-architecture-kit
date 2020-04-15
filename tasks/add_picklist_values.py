@@ -358,7 +358,6 @@ class AddPicklistValues(BaseSalesforceApiTask, Deploy):
             picklist_values = picklist_values_xml,
             record_types = record_type_picklist_xml
         )
-
         return object_xml
 
     def _deploy_metadata(self):
