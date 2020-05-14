@@ -8,6 +8,7 @@ from cumulusci.core.utils import process_bool_arg
 from cumulusci.core.utils import process_list_arg
 from cumulusci.tasks.salesforce import BaseSalesforceApiTask
 from cumulusci.tasks.salesforce import Deploy
+from cumulusci.utils import inject_namespace
 from xml.sax.saxutils import escape
 
 package_xml_template = """<?xml version="1.0" encoding="UTF-8"?>
@@ -94,7 +95,11 @@ class AddPicklistValues(BaseSalesforceApiTask, Deploy):
             "required": False,
         },
         "restricted": {
-            "description": "If picklist value is a required field",
+            "description": "If true, sets each picklist value to be a restricted field",
+            "required": False,
+        },
+        "namespaced": {
+            "description": "If true, sets the org to a namespaced context",
             "required": False,
         },
     }
@@ -108,7 +113,16 @@ class AddPicklistValues(BaseSalesforceApiTask, Deploy):
         self.options["restricted"] = process_bool_arg(
             self.options.get("restricted", False)
         )
+        self.options["namespaced"] = process_bool_arg(
+            self.options.get("namespaced", False)
+        )
         self.options["sorted"] = process_bool_arg(self.options.get("sorted", False))
+        if self.options["namespaced"] and self.options["recordtypes"]:
+            # add the namespace prefix for each record type
+            namespace = self.project_config.project__package__namespace + "__"
+            self.options["recordtypes"] = [
+                namespace + name for name in self.options["recordtypes"]
+            ]
 
     # Adds picklist values to the given field, if they don't already exist.
     # Optionally adds the picklist values for the specified record types, if the record types exist.
@@ -213,7 +227,7 @@ class AddPicklistValues(BaseSalesforceApiTask, Deploy):
     def _get_active_record_types(self, sobject):
         picklist_record_types = []
         picklist_record_type_names = []
-        if len(self.options["recordtypes"]) > 0:
+        if self.options["recordtypes"]:
             record_type_tooling_results = self.tooling.query(
                 "SELECT Id, FullName, Metadata, Name "
                 "FROM RecordType "
@@ -300,13 +314,6 @@ class AddPicklistValues(BaseSalesforceApiTask, Deploy):
 
         # add the new picklist values
         for value in self.options["values"]:
-            # ignore any existing picklist values
-            # if value.lower() in values_added:
-            #     self.logger.info(
-            #         f"{value} is already a picklist value on {field}. Skipping over..."
-            #     )
-
-            # else:
             picklist_values_xml += picklist_value_template.format(
                 name=escape(value), default=False, label=escape(value)
             )
@@ -329,11 +336,11 @@ class AddPicklistValues(BaseSalesforceApiTask, Deploy):
                             values_added_to_record_type.append(
                                 picklist_value["valueName"].lower()
                             )
-                            if picklist["values"][0]["valueName"] == "Other": 
+                            if picklist["values"][0]["valueName"] == "Other":
                                 other_record_type_picklist_values_xml += record_type_picklist_value_template.format(
-                                name=escape(picklist_value["valueName"]),
-                                default=picklist_value["default"],
-                            )
+                                    name=escape(picklist_value["valueName"]),
+                                    default=picklist_value["default"],
+                                )
                             else:
                                 record_type_picklist_values_xml += record_type_picklist_value_template.format(
                                     name=escape(picklist_value["valueName"]),
@@ -350,9 +357,8 @@ class AddPicklistValues(BaseSalesforceApiTask, Deploy):
                     record_type_picklist_values_xml += record_type_picklist_value_template.format(
                         name=escape(value), default=False
                     )
-            
-                record_type_picklist_values_xml += other_record_type_picklist_values_xml  
-                print(record_type_picklist_values_xml)   
+
+                record_type_picklist_values_xml += other_record_type_picklist_values_xml
                 # only include the description if there's a value -- if it's blank, an error is thrown if the record type is managed
                 record_type_description = ""
                 if rt["Metadata"]["description"] != None:

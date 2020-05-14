@@ -80,6 +80,7 @@ tasks:
         description: Adds picklist values to the given field, if they don't already exist.
         class_path: tasks.add_picklist_values.AddPicklistValues
         group: 'K-12: Metadata'
+        namespaced: False
         
 
     add_application_type_picklist_values:
@@ -90,8 +91,10 @@ tasks:
             sobject: hed__Application__c
             field: hed__Application_Type__c
             values: "Elementary School,Middle School,High School"
+            existing_values: "Elementary School,Middle School,High School"
             sorted: true
-    
+            namespaced: False
+
     add_behavior_response_type_values:
         description: Adds additional picklist values to the Type field.
         class_path: tasks.add_picklist_values.AddPicklistValues
@@ -99,9 +102,11 @@ tasks:
         options:
             sobject: hed__Behavior_Response__c
             field: hed__Type__c
-            values: "Expulsion with Services,In-School Suspension,Out-of-School Suspension,Removal from Classroom"
+            values: "Detention,Expulsion with Services,In-School Suspension,Out-of-School Suspension,Removal from Classroom"
             restricted: true
             sorted: True
+            namespaced: False
+
     
     add_case_location_values: 
         description: Adds additional picklist values to the Location field.
@@ -115,9 +120,10 @@ tasks:
             recordtypes: Incident
             restricted: true
             sorted: True
-            
+            namespaced: False
+
     uninstall_packaged_incremental:
-        #description: Deletes any metadata from the package in the target org not in the local workspace
+        description: Deletes any metadata from the package in the target org not in the local workspace
         class_path: cumulusci.tasks.salesforce.UninstallPackagedIncremental
         options:
             ignore:
@@ -254,10 +260,16 @@ flows:
                 task: deploy_k12_kit_settings
             7:
                 task: add_application_type_picklist_values
+                options:
+                    namespaced: True
             8:
                 task: add_behavior_response_type_values
+                options:
+                    namespaced: True
             9:
                 task: add_case_location_values
+                options:
+                    namespaced: True
             10:
                 task: execute_install_apex
             11:
